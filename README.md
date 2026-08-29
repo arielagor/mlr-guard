@@ -149,13 +149,16 @@ curl localhost:8787/api/artifacts/$ID/audit/verify
 - **The prominence rule had an off-by-one.** It compared a 0-based index against `ceil(n/2)` and so
   missed a safety claim sitting at position 4 of 5. Caught by a test that encoded the intent rather
   than the implementation.
-- **The deployed instance stores snapshots in D1, not R2.** Creating an R2 bucket requires adding a
-  billing subscription to the Cloudflare account, and this account has none. Rather than let a
+- **Snapshots degrade gracefully when R2 is absent.** Creating an R2 bucket requires a billing
+  subscription, and this project was briefly deployed on an account without one. Rather than let a
   missing object store disable the audit trail, `putSnapshot`/`getSnapshot` prefer R2 when the
-  binding is present and fall back to a `snapshots` table in D1 when it is not. The R2 binding is
-  commented out in `wrangler.toml` with the one command needed to turn it back on. Snapshots stay
-  content-addressed either way, so the property that matters — "show me exactly what the reviewer
-  approved" — holds in both configurations.
+  binding is present and fall back to a `snapshots` table in D1 when it is not. Snapshots stay
+  content-addressed in both configurations, so "show me exactly what the reviewer approved" holds
+  either way. R2 is enabled on the live deployment now; the two artifacts generated before it was
+  turned on still resolve, because `getSnapshot` falls through to D1 on an R2 miss.
+- **`wrangler r2 object get` defaults to LOCAL storage in wrangler 4.** It reported "The specified
+  key does not exist" for an object that production was serving fine. Pass `--remote` to query the
+  real bucket. Same class of trap as `d1 execute`, and it will make you doubt a working system.
 
 ## Not built here
 

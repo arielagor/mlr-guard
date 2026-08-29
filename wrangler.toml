@@ -18,12 +18,13 @@ database_id = "d9f06f96-ac20-48d5-bc4f-e5aa9e50383b"
 
 # Content-addressed snapshots of every artifact version that was ever
 # generated or approved. Answers "what exactly did the reviewer approve".
-# R2 requires a billing subscription on the account. Until it is enabled, the
-# Worker falls back to the D1 'snapshots' table (see putSnapshot in
-# src/api/index.ts). Uncomment after: wrangler r2 bucket create mlr-guard-snapshots
-# [[r2_buckets]]
-# binding = "SNAPSHOTS"
-# bucket_name = "mlr-guard-snapshots"
+# Content-addressed snapshots of every artifact version generated or approved.
+# The Worker degrades to a D1 'snapshots' table if this binding is absent
+# (see putSnapshot in src/api/index.ts), so a missing bucket never disables
+# the audit trail.
+[[r2_buckets]]
+binding = "SNAPSHOTS"
+bucket_name = "mlr-guard-snapshots"
 
 [vars]
 # OpenAI-COMPATIBLE endpoint. The JD says "OpenAI-compatible LLM APIs", not
