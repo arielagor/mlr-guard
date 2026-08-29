@@ -1,0 +1,33 @@
+name = "mlr-guard"
+main = "src/api/index.ts"
+compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]
+
+# The built Vue SPA is served as static assets from the same Worker.
+[assets]
+directory = "./web/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+# Relational store: claims, references, content modules, prompt versions,
+# artifacts, and the append-only audit log.
+[[d1_databases]]
+binding = "DB"
+database_name = "mlr_guard"
+database_id = "PLACEHOLDER_RUN_WRANGLER_D1_CREATE"
+
+# Content-addressed snapshots of every artifact version that was ever
+# generated or approved. Answers "what exactly did the reviewer approve".
+[[r2_buckets]]
+binding = "SNAPSHOTS"
+bucket_name = "mlr-guard-snapshots"
+
+[vars]
+# OpenAI-COMPATIBLE endpoint. The JD says "OpenAI-compatible LLM APIs", not
+# "OpenAI", so the base URL is configuration, not a hardcoded vendor.
+# Works unchanged against api.openai.com, api.x.ai, an Azure OpenAI shim,
+# a Cloudflare AI Gateway, or a self-hosted vLLM/Ollama front end.
+LLM_BASE_URL = "https://api.x.ai/v1"
+LLM_MODEL = "grok-3-mini"
+LLM_TEMPERATURE = "0"
+# Set with:  wrangler secret put LLM_API_KEY

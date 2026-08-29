@@ -1,0 +1,30 @@
+{
+  "name": "mlr-guard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Claims-grounded content generation on the Cloudflare edge. An LLM may only assemble copy from pre-approved claims, every sentence carries its claim ID and reference anchor, and nothing reaches published without an authenticated human approval.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "dev:web": "vite --config web/vite.config.ts",
+    "build": "vue-tsc -p web/tsconfig.json --noEmit && vite build --config web/vite.config.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json && vue-tsc -p web/tsconfig.json --noEmit",
+    "test": "vitest run",
+    "db:local": "wrangler d1 execute mlr_guard --local --file=./migrations/0001_init.sql && wrangler d1 execute mlr_guard --local --file=./migrations/0002_seed.sql",
+    "db:remote": "wrangler d1 execute mlr_guard --remote --file=./migrations/0001_init.sql && wrangler d1 execute mlr_guard --remote --file=./migrations/0002_seed.sql",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "dependencies": {
+    "hono": "^4.6.14",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260829.1",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vitest": "^2.1.8",
+    "vue-tsc": "^2.1.10",
+    "wrangler": "^4.127.1"
+  }
+}
