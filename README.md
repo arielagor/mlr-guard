@@ -7,6 +7,8 @@ approval.
 
 Vue 3 + TypeScript · Hono on Cloudflare Workers · D1 · R2 · OpenAI-compatible LLM API
 
+**Live: https://mlr-guard.ariel-ec1.workers.dev**
+
 > **This is a demo built for a job application, on a fictional product with synthetic claims.**
 > "VERIDANE" does not exist. The studies and prescribing information referenced are invented. There
 > is no real drug, no real claim, no real trial and no patient data anywhere in this repository.
@@ -147,6 +149,13 @@ curl localhost:8787/api/artifacts/$ID/audit/verify
 - **The prominence rule had an off-by-one.** It compared a 0-based index against `ceil(n/2)` and so
   missed a safety claim sitting at position 4 of 5. Caught by a test that encoded the intent rather
   than the implementation.
+- **The deployed instance stores snapshots in D1, not R2.** Creating an R2 bucket requires adding a
+  billing subscription to the Cloudflare account, and this account has none. Rather than let a
+  missing object store disable the audit trail, `putSnapshot`/`getSnapshot` prefer R2 when the
+  binding is present and fall back to a `snapshots` table in D1 when it is not. The R2 binding is
+  commented out in `wrangler.toml` with the one command needed to turn it back on. Snapshots stay
+  content-addressed either way, so the property that matters — "show me exactly what the reviewer
+  approved" — holds in both configurations.
 
 ## Not built here
 

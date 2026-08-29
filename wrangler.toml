@@ -14,13 +14,16 @@ not_found_handling = "single-page-application"
 [[d1_databases]]
 binding = "DB"
 database_name = "mlr_guard"
-database_id = "PLACEHOLDER_RUN_WRANGLER_D1_CREATE"
+database_id = "d9f06f96-ac20-48d5-bc4f-e5aa9e50383b"
 
 # Content-addressed snapshots of every artifact version that was ever
 # generated or approved. Answers "what exactly did the reviewer approve".
-[[r2_buckets]]
-binding = "SNAPSHOTS"
-bucket_name = "mlr-guard-snapshots"
+# R2 requires a billing subscription on the account. Until it is enabled, the
+# Worker falls back to the D1 'snapshots' table (see putSnapshot in
+# src/api/index.ts). Uncomment after: wrangler r2 bucket create mlr-guard-snapshots
+# [[r2_buckets]]
+# binding = "SNAPSHOTS"
+# bucket_name = "mlr-guard-snapshots"
 
 [vars]
 # OpenAI-COMPATIBLE endpoint. The JD says "OpenAI-compatible LLM APIs", not

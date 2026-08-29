@@ -16,7 +16,14 @@ import { hashEntry, sha256Hex, verifyChain, type AuditInput } from '../domain/au
 
 export interface Env {
   DB: D1Database;
-  SNAPSHOTS: R2Bucket;
+  /**
+   * Optional. R2 is the right home for content-addressed artifact snapshots
+   * (cheap, no egress fees, unbounded), but enabling R2 requires a billing
+   * subscription on the Cloudflare account. A missing object store should not
+   * disable the audit trail, so when this binding is absent the snapshot falls
+   * back to the `snapshots` table in D1. See putSnapshot/getSnapshot below.
+   */
+  SNAPSHOTS?: R2Bucket;
   ASSETS: Fetcher;
   LLM_BASE_URL: string;
   LLM_MODEL: string;
@@ -255,9 +262,7 @@ app.post('/api/artifacts/:id/generate', async (c) => {
   const snapshotBody = JSON.stringify({ artifactId: id, segments, lint: lintResult }, null, 2);
   const digest = await sha256Hex(snapshotBody);
   const snapshotKey = `artifacts/${id}/${digest}.json`;
-  await c.env.SNAPSHOTS.put(snapshotKey, snapshotBody, {
-    httpMetadata: { contentType: 'application/json' },
-  });
+  await putSnapshot(c.env, snapshotKey, snapshotBody);
 
   await c.env.DB.prepare(
     `UPDATE artifacts SET state = ?, body = ?, lint_status = ?, prompt_version = ?,
@@ -443,9 +448,9 @@ app.get('/api/artifacts/:id/audit/verify', async (c) => {
 
 app.get('/api/snapshots/*', async (c) => {
   const key = c.req.path.replace('/api/snapshots/', '');
-  const obj = await c.env.SNAPSHOTS.get(key);
-  if (!obj) return c.json({ error: 'snapshot not found' }, 404);
-  return new Response(obj.body, { headers: { 'content-type': 'application/json' } });
+  const body = await getSnapshot(c.env, key);
+  if (body === null) return c.json({ error: 'snapshot not found' }, 404);
+  return new Response(body, { headers: { 'content-type': 'application/json' } });
 });
 
 // SPA fallback for everything that is not /api.
@@ -502,6 +507,39 @@ function deterministicFallback(claims: Array<{ id: string; claim_type: string }>
   const safety = claims.filter((c) => c.claim_type === 'safety').map((c) => c.id);
   const rest = claims.filter((c) => c.claim_type !== 'safety').map((c) => c.id);
   return [...rest.slice(0, 1), ...safety, ...rest.slice(1)];
+}
+
+/**
+ * Content-addressed snapshot write. Prefers R2; falls back to D1.
+ *
+ * The key is the SHA-256 of the body, so a write is idempotent by construction
+ * and "what exactly did the reviewer approve" stays answerable either way.
+ */
+async function putSnapshot(env: Env, key: string, body: string): Promise<void> {
+  if (env.SNAPSHOTS) {
+    await env.SNAPSHOTS.put(key, body, {
+      httpMetadata: { contentType: 'application/json' },
+    });
+    return;
+  }
+  await env.DB.prepare(
+    `INSERT INTO snapshots (key, body) VALUES (?, ?) ON CONFLICT(key) DO NOTHING`,
+  )
+    .bind(key, body)
+    .run();
+}
+
+/** Reads a snapshot from whichever store holds it. */
+async function getSnapshot(env: Env, key: string): Promise<string | null> {
+  if (env.SNAPSHOTS) {
+    const obj = await env.SNAPSHOTS.get(key);
+    if (obj) return await obj.text();
+    // Fall through: an artifact generated before R2 was enabled lives in D1.
+  }
+  const row = await env.DB.prepare(`SELECT body FROM snapshots WHERE key = ?`)
+    .bind(key)
+    .first<{ body: string }>();
+  return row?.body ?? null;
 }
 
 async function appendAudit(env: Env, input: AuditInput) {
