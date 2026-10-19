@@ -19,6 +19,14 @@ if (!KEY) {
   process.exit(2);
 }
 
+// Hard stop on test spend (Ariel, 2026-10-18): against xAI this needs XAI_TEST_SPEND_OK from Ariel
+// for this run. One small grok-3-mini chat call is well under a cent; floor $0.01.
+if (/x\.ai/i.test(BASE)) {
+  const guardUrl: string = 'file:///C:/Users/ariel/.claude/scripts/lib/xai-test-guard.mjs';
+  const { requireXaiTestSpend } = await import(guardUrl);
+  requireXaiTestSpend({ script: 'mlr-guard/scripts/verify-llm.ts', estimateUsd: 0.01 });
+}
+
 const CLAIMS: ClaimOffer[] = [
   { id: 'CLM-001', claim_type: 'efficacy',   claim_text: 'In a 24-week trial, VERIDANE reduced the primary endpoint score by 4.2 points versus 1.8 with placebo.' },
   { id: 'CLM-002', claim_type: 'indication', claim_text: 'VERIDANE is indicated for moderate to severe disease in adults who have had an inadequate response to first-line therapy.' },
